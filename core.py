@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 import xlrd
 import random
 from collections import namedtuple
@@ -25,7 +25,7 @@ class ExcelWorker:
     def _sample(self, col):
         return random.sample(self._segments(col), 3)
 
-    def _triage(self, col: int, n: int, col2: int) -> list:
+    def _triage(self, col: int, col2: int, n: int) -> list:
         def remove_duplicates(lst: list) -> dict:
             return dict(lst)
 
@@ -39,19 +39,21 @@ class ExcelWorker:
             if wc_equal_or_less_than(seg.words, n)
         ]
 
+        # remove duplicate terms
         source_words_list = remove_duplicates(source_words_list)
 
+        # get source term's equivalent target term
         target_words_list = [
             self.ws.cell_value(val, col2) for val in source_words_list.values()
         ]
 
+        # zip source and target terms, and remove 1 char term after
+        # removing any punctuation
         term_tuples = list(zip(source_words_list, target_words_list))
         term_tuples = [
             tt
             for tt in term_tuples
-            # remove term tuples where source and target terms are identical
             if tt[0] != tt[1]
-            # remove single character terms after removing punctuation
             and len(
                 tt[0].translate(str.maketrans("", "", string.punctuation))
                 ) != 1
@@ -109,7 +111,8 @@ class GlossaryReducer:
         else:
             raise TypeError(
                 "Could not recognize the file extension.\
-                     Please provide an Excel file."
+ Please provide an Excel file."
+
             )
 
     @property
@@ -141,7 +144,7 @@ class GlossaryReducer:
             col: index of column to get a avg word count for.
 
         Return:
-            Float of avg word count of the given column index
+            Float of avg wordcount of the given column index
 
         """
 
@@ -150,7 +153,7 @@ class GlossaryReducer:
         except IndexError:
             print(f"Nothing in column {col}.")
 
-    def triage(self, source_col: int, n: int, target_col: int) -> list:
+    def triage(self, source_col: int, target_col: int, n: int) -> list:
         """Returns segments in col that match len(seg.split(' ')) =< n
 
         Also removes source term with character length of 1 after deleting
@@ -166,13 +169,14 @@ class GlossaryReducer:
             List of tuples (source col term, target col term)
 
         """
-        return self.wb._triage(source_col, n, target_col)
+        return self.wb._triage(source_col, target_col, n)
 
     def __str__(self):
         return "Reducer for " + self.path.split("/")[-1]
 
 
 if __name__ == "__main__":
-    path = r"C:\Users\admin\Desktop\KRAFTON Glossary.xls"
+    path = r""
     gr = GlossaryReducer(path)
     a = gr.triage(3, 1, 1)
+
